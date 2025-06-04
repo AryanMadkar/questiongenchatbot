@@ -1,0 +1,187 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Chatbot with Memory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-brain"></i> Smart Chatbot with Memory</h1>
+            <div class="memory-info">
+                <button id="toggleMemory"><i class="fas fa-memory"></i> Memory</button>
+                <button id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </header>
+        
+        <div class="memory-panel" id="memoryPanel">
+            <div class="memory-section">
+                <h3><i class="fas fa-history"></i> Short-Term Memory</h3>
+                <div id="shortTermMemory" class="memory-content"></div>
+            </div>
+            <div class="memory-section">
+                <h3><i class="fas fa-book"></i> Long-Term Memory</h3>
+                <div id="longTermMemory" class="memory-content"></div>
+            </div>
+        </div>
+        
+        <div class="chat-container">
+            <div id="chatbox"></div>
+            
+            <div class="input-area">
+                <textarea id="userInput" placeholder="Type your message..." rows="1"></textarea>
+                <button id="sendBtn"><i class="fas fa-paper-plane"></i> Send</button>
+            </div>
+            
+            <div class="status-bar">
+                <span id="status">Model: Zephyr-7B-Beta | Session started: <span id="sessionTime"></span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize elements
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const toggleMemoryBtn = document.getElementById('toggleMemory');
+        const memoryPanel = document.getElementById('memoryPanel');
+        const resetBtn = document.getElementById('resetBtn');
+        const shortTermMemory = document.getElementById('shortTermMemory');
+        const longTermMemory = document.getElementById('longTermMemory');
+        const sessionTime = document.getElementById('sessionTime');
+        
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+        
+        // Initialize session time
+        fetch('/')
+            .then(() => {
+                const now = new Date();
+                sessionTime.textContent = now.toLocaleString();
+            });
+        
+        // Toggle memory panel
+        let memoryVisible = false;
+        toggleMemoryBtn.addEventListener('click', () => {
+            memoryVisible = !memoryVisible;
+            memoryPanel.style.display = memoryVisible ? 'flex' : 'none';
+            toggleMemoryBtn.innerHTML = memoryVisible ? 
+                '<i class="fas fa-eye-slash"></i> Hide Memory' : 
+                '<i class="fas fa-memory"></i> Memory';
+        });
+        
+        // Reset conversation
+        resetBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset the conversation? All memory will be lost.')) {
+                fetch('/reset', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status) {
+                            chatbox.innerHTML = '';
+                            shortTermMemory.textContent = '';
+                            longTermMemory.textContent = '';
+                            const now = new Date();
+                            sessionTime.textContent = now.toLocaleString();
+                            addMessage('bot', "Hello! I'm your AI assistant. How can I help you today?");
+                        }
+                    });
+            }
+        });
+        
+        // Add message to chat
+        function addMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerHTML = sender === 'user' ? 
+                '<i class="fas fa-user"></i>' : 
+                '<i class="fas fa-robot"></i>';
+            
+            const content = document.createElement('div');
+            content.className = 'content';
+            content.textContent = text;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            chatbox.appendChild(messageDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+        
+        // Send message to server
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to UI
+            addMessage('user', message);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            
+            // Show typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'message bot-message typing';
+            typingIndicator.innerHTML = `
+                <div class="avatar"><i class="fas fa-robot"></i></div>
+                <div class="content">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            chatbox.appendChild(typingIndicator);
+            chatbox.scrollTop = chatbox.scrollHeight;
+            
+            try {
+                // Send to server
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                // Remove typing indicator
+                chatbox.removeChild(typingIndicator);
+                
+                // Process response
+                const data = await response.json();
+                addMessage('bot', data.response);
+                
+                // Update memory panels
+                if (data.memory) {
+                    shortTermMemory.textContent = data.memory.short_term || "No recent conversation";
+                    longTermMemory.textContent = data.memory.long_term || "No summary available";
+                }
+            } catch (error) {
+                chatbox.removeChild(typingIndicator);
+                addMessage('bot', `Error: ${error.message}`);
+            }
+        }
+        
+        // Event listeners
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Initial bot message
+        window.addEventListener('load', () => {
+            addMessage('bot', "Hello! I'm your AI assistant with enhanced memory capabilities. How can I help you today?");
+        });
+    </script>
+</body>
+</html>
