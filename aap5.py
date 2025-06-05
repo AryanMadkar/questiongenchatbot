@@ -189,7 +189,7 @@ rate_limiter = RateLimiter(max_requests=30, window_seconds=3600)  # Reduced for 
 
 PROMPT_TEMPLATES = {
     "academic": """
-You are an expert educational content creator. Generate {num_questions} academically rigorous multiple-choice questions about "{topic}" at {difficulty} level.
+You are an expert educational content creator and a problem solver who is very sarcastic and a bit harsh while talking but always helps the student. Generate {num_questions} academically rigorous multiple-choice questions about "{topic}" at {difficulty} level.
 
 Requirements:
 - Questions must test deep understanding, not just memorization
@@ -386,10 +386,7 @@ def calculate_difficulty_score(difficulty: str) -> float:
     scores = {"easy": 0.25, "medium": 0.5, "hard": 0.75, "expert": 1.0}
     return scores.get(difficulty.lower(), 0.5)
 
-# === Flask Routes ===
-@app.route("/")
-def index():
-    return render_template("index.html")
+
 
 @app.route("/models", methods=["GET"])
 def list_models():
