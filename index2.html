@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LangChain LLM Interface</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans">
+  <div class="max-w-3xl mx-auto mt-10 p-6 bg-white shadow-lg rounded-xl">
+    <h1 class="text-2xl font-bold mb-6 text-center">🚀 LLM Generator</h1>
+
+    <div class="mb-4">
+      <label for="model" class="block font-semibold mb-1">Choose Model:</label>
+      <select id="model" class="w-full p-2 border rounded">
+        <option value="llama-3">LLaMA 3</option>
+        <option value="mistral">Mistral</option>
+        <option value="phi-2">Phi-2</option>
+      </select>
+    </div>
+
+    <div class="mb-4">
+      <label for="prompt" class="block font-semibold mb-1">Prompt:</label>
+      <textarea id="prompt" class="w-full p-3 border rounded h-32 resize-none" placeholder="Enter your prompt here..."></textarea>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block font-semibold mb-1">Temperature</label>
+        <input type="number" id="temperature" min="0.1" max="2.0" step="0.1" value="0.7" class="w-full p-2 border rounded">
+      </div>
+      <div>
+        <label class="block font-semibold mb-1">Top P</label>
+        <input type="number" id="top_p" min="0.1" max="1.0" step="0.05" value="0.95" class="w-full p-2 border rounded">
+      </div>
+      <div>
+        <label class="block font-semibold mb-1">Max Tokens</label>
+        <input type="number" id="max_tokens" min="1" max="1000" value="200" class="w-full p-2 border rounded">
+      </div>
+    </div>
+
+    <button onclick="generate()" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 transition">
+      ✨ Generate
+    </button>
+
+    <div id="output" class="mt-6 p-4 bg-gray-100 border rounded min-h-[100px] whitespace-pre-wrap"></div>
+  </div>
+
+  <script>
+    async function generate() {
+      const model = document.getElementById("model").value;
+      const prompt = document.getElementById("prompt").value;
+      const temperature = parseFloat(document.getElementById("temperature").value);
+      const top_p = parseFloat(document.getElementById("top_p").value);
+      const max_tokens = parseInt(document.getElementById("max_tokens").value);
+
+      const output = document.getElementById("output");
+      output.textContent = "⏳ Generating response...";
+
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, prompt, temperature, top_p, max_tokens })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          output.textContent = `❌ Error: ${data.error}`;
+        } else {
+          output.textContent = `🧠 Response:\n\n${data.response}\n\n⏱️ Time: ${data.time}s | Tokens: ${data.tokens}`;
+        }
+      } catch (err) {
+        output.textContent = "❌ Request failed: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
