@@ -7,3 +7,5 @@ create a static folder and put the css file in that
 run pip install -r requirements.txt
 
 run python aap.py
+
+for app3.py use index2.html
